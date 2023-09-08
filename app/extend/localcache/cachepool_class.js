@@ -101,7 +101,7 @@ class CachePool extends EventEmitter {
       // 將 iterator 的第一個從 Map 中移除
       case 'replace': {
         const [cacheKey, cacheValue] = this._cacheMap.entries().next().value;
-        strategy = { key: cacheKey, value: cacheValue, executed: true };
+        strategy = { key: cacheKey, value: cacheValue.value, executed: true };
         this._cacheMap.delete(cacheKey);
         break;
       }
