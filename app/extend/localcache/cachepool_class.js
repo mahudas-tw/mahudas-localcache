@@ -20,7 +20,7 @@ class CachePool extends EventEmitter {
   maxSize = 0; // 最多可儲存的數量，0表示不限制
   defaultTTL = 0; // 預設的過期時間(ms)，0表示不會過期
   strategy; // 當maxSize滿了時如果再加入資料時的策略
-  _availableStategies = [
+  _availableStrategies = [
     'replace', // 把最舊的資料移除(依照set的順序決定)
     'drop', // 拋棄要插入的資料
   ];
@@ -43,7 +43,7 @@ class CachePool extends EventEmitter {
     this.maxSize = to.number(maxSize) || 0;
     this.defaultTTL = to.number(defaultTTL) || 0;
     this.strategy = to.string(strategy).toLowerCase();
-    if (!this._availableStategies.includes(this.strategy)) {
+    if (!this._availableStrategies.includes(this.strategy)) {
       this.strategy = 'replace';
     }
   }
@@ -95,6 +95,25 @@ class CachePool extends EventEmitter {
     }
   }
 
+  _executionStrategy({ key, value }) {
+    let strategy = { key, value, executed: false };
+    switch (this.strategy) {
+      // 將 iterator 的第一個從 Map 中移除
+      case 'replace': {
+        const [cacheKey, cacheValue] = this._cacheMap.entries().next().value;
+        strategy = { key: cacheKey, value: cacheValue.value, executed: true };
+        this._cacheMap.delete(cacheKey);
+        break;
+      }
+      // 不做任何事，直接拋棄新的資料
+      case 'drop':
+      default:
+        break;
+    }
+
+    return strategy;
+  }
+
   set(key, value, { ttl } = {}) {
     // 如果目前的size已經等於maxSize，
     // 並且該key值並不存在於目前的Map裡，表示是新的資料，
@@ -103,18 +122,14 @@ class CachePool extends EventEmitter {
       && this._cacheMap.size >= this.maxSize
       && !this._cacheMap.has(key)
     ) {
-      let replaced = { key, value };
-      // 如果 strategy 是 replace
-      // 就將 iterator 的第一個從 Map 中移除，並重新set一次
-      // 如果不是 replace，就不做任何事，直接拋棄新的資料
-      if (this.strategy === 'replace') {
-        const _iterItem = this._cacheMap.entries().next().value;
-        replaced = { key: _iterItem[0], value: _iterItem[1] };
-        this._cacheMap.delete(_iterItem[0]);
+      const strategy = this._executionStrategy({ key, value });
+      // 如果有執行就重新 set 一次
+      if (strategy.executed) {
         this.set(key, value, { ttl });
       }
+
       // 將被排除的資料發送事件出去
-      this.emit('maxSize', replaced.key, replaced.value);
+      this.emit('maxSize', strategy.key, strategy.value);
       return;
     }
     const { to, is } = this.app.utils;
