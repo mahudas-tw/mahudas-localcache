@@ -30,6 +30,7 @@ app.localCache.deletePool('for test');
 maxSize | Number | 0 | 最多可以儲存的資料筆數，0=無限制
 defaultTTL | Number | 0 | 儲存的資料在多少ms之後自動清除，0=無限
 strategy | String | 'replace' | 當資料量已經到達maxSize時，加入新資料時的採取策略。 `replace`=移除最早被加入的資料，`drop`=拋棄原本要加入的新資料
+deepCopy | Boolean | true | 設定/取出資料時，是否要將資料進行deepCopy，預設為true，可以減少memory leak的發生
 
 ## CachePool的操作
 method | 說明

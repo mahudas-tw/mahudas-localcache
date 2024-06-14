@@ -1,6 +1,6 @@
 {
   "name": "@mahudas/localcache",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
   },
   "license": "ISC",
   "dependencies": {
-    "mahudas": "^0.1.3"
+    "mahudas": "^0.2.0"
   },
   "devDependencies": {
     "eslint": "^8.26.0",
