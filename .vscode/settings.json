@@ -8,6 +8,6 @@
     "typescript.validate.enable": false,
     "typescript.format.enable": false,
     "editor.codeActionsOnSave": {
-        "source.fixAll.eslint":true
+        "source.fixAll.eslint": "explicit"
     }
 }

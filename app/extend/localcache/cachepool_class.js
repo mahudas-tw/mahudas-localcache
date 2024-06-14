@@ -20,6 +20,7 @@ class CachePool extends EventEmitter {
   maxSize = 0; // 最多可儲存的數量，0表示不限制
   defaultTTL = 0; // 預設的過期時間(ms)，0表示不會過期
   strategy; // 當maxSize滿了時如果再加入資料時的策略
+  deepCopy = true; // 設定傳入與傳出時是否要進行deepCopy
   _availableStrategies = [
     'replace', // 把最舊的資料移除(依照set的順序決定)
     'drop', // 拋棄要插入的資料
@@ -38,6 +39,7 @@ class CachePool extends EventEmitter {
     maxSize = 0,
     defaultTTL = 0,
     strategy = 'replace',
+    deepCopy = true,
   } = {}) {
     const { to } = this.app.utils;
     this.maxSize = to.number(maxSize) || 0;
@@ -46,6 +48,7 @@ class CachePool extends EventEmitter {
     if (!this._availableStrategies.includes(this.strategy)) {
       this.strategy = 'replace';
     }
+    this.deepCopy = to.boolean(deepCopy);
   }
 
   // setTimeout 被觸發時會呼叫 _onTick
@@ -115,6 +118,14 @@ class CachePool extends EventEmitter {
   }
 
   set(key, value, { ttl } = {}) {
+    const { to, is } = this.app.utils;
+
+    let setValue = value;
+    if (this.deepCopy) {
+      // 將value deep copy一份進行儲存，避免造成memoery leak
+      setValue = this.app.utils.to.json(value) || value;
+    }
+
     // 如果目前的size已經等於maxSize，
     // 並且該key值並不存在於目前的Map裡，表示是新的資料，
     // 就需要判斷strategy並發送maxSize事件
@@ -129,15 +140,19 @@ class CachePool extends EventEmitter {
       }
 
       // 將被排除的資料發送事件出去
-      this.emit('maxSize', strategy.key, strategy.value);
+      let popValue = strategy.value;
+      if (this.deepCopy) {
+        // 將value deep copy一份進行儲存，避免造成memoery leak
+        popValue = this.app.utils.to.json(strategy.value) || strategy.value;
+      }
+      this.emit('maxSize', strategy.key, popValue);
       return;
     }
-    const { to, is } = this.app.utils;
     let _ttl = to.number(ttl) || 0;
     if (is.nullOrUndefined(ttl)) _ttl = this.defaultTTL;
     const _expiredAt = Date.now() + _ttl;
 
-    const data = { value };
+    const data = { value: setValue };
     if (_ttl > 0) {
       data.expiredAt = _expiredAt;
     }
@@ -148,7 +163,12 @@ class CachePool extends EventEmitter {
 
   get(key) {
     const data = this._cacheMap.get(key) || {};
-    return data.value;
+    let popValue = data.value;
+    if (this.deepCopy) {
+      // 將value deep copy一份進行儲存，避免造成memoery leak
+      popValue = this.app.utils.to.json(data.value) || data.value;
+    }
+    return popValue;
   }
 
   size() {
