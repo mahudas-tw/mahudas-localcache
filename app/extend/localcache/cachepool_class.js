@@ -123,7 +123,9 @@ class CachePool extends EventEmitter {
     let setValue = value;
     if (this.deepCopy) {
       // 將value deep copy一份進行儲存，避免造成memoery leak
-      setValue = this.app.utils.to.json(value) || value;
+      try {
+        setValue = structuredClone(value);
+      } catch (e) { /** */ }
     }
 
     // 如果目前的size已經等於maxSize，
@@ -143,7 +145,9 @@ class CachePool extends EventEmitter {
       let popValue = strategy.value;
       if (this.deepCopy) {
         // 將value deep copy一份進行儲存，避免造成memoery leak
-        popValue = this.app.utils.to.json(strategy.value) || strategy.value;
+        try {
+          popValue = structuredClone(strategy.value);
+        } catch (e) { /** */ }
       }
       this.emit('maxSize', strategy.key, popValue);
       return;
@@ -166,7 +170,9 @@ class CachePool extends EventEmitter {
     let popValue = data.value;
     if (this.deepCopy) {
       // 將value deep copy一份進行儲存，避免造成memoery leak
-      popValue = this.app.utils.to.json(data.value) || data.value;
+      try {
+        popValue = structuredClone(data.value);
+      } catch (e) { /** */ }
     }
     return popValue;
   }
